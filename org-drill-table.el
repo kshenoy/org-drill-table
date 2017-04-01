@@ -36,54 +36,64 @@
 ;; For example, given the following org headline,
 
 ;;    * Vocab
-;;    | English   | Spanish |
-;;    |-----------+---------|
-;;    | Today     | Hoy     |
-;;    | Yesterday | Ayer    |
-;;    | Tomorrow  | Mañana  |
+;;    |-----------+-----------+------------------|
+;;    | English   | Spanish   | Example          |
+;;    |-----------+-----------+------------------|
+;;    | Today     | /Hoy/     | /Hoy es domingo/ |
+;;    | Tomorrow  | /Mañana/  |                  |
+;;    |-----------+-----------+------------------|
 
 ;; invoking `org-drill-table-generate' will generate cards for each table row:
 
 ;;    * Vocab
 ;;    :PROPERTIES:
-;;    :DRILL_HEADING: Noun
 ;;    :DRILL_CARD_TYPE: twosided
 ;;    :DRILL_INSTRUCTIONS: Translate the following word.
 ;;    :END:
-;;    | English   | Spanish |
-;;    |-----------+---------|
-;;    | Today     | Hoy     |
-;;    | Yesterday | Ayer    |
-;;    | Tomorrow  | Mañana  |
+;;    |-----------+-----------+------------------|
+;;    | English   | Spanish   | Example          |
+;;    |-----------+-----------+------------------|
+;;    | Today     | /Hoy/     | /Hoy es domingo/ |
+;;    | Tomorrow  | /Mañana/  |                  |
+;;    |-----------+-----------+------------------|
+;;
 ;;    ** Cards
-;;    *** Noun                                                            :drill:
+;;    *** Today :drill:
 ;;    :PROPERTIES:
 ;;    :DRILL_CARD_TYPE: twosided
 ;;    :END:
-;;    Translate the following word.
+;;
 ;;    **** English
 ;;    Today
+;;
 ;;    **** Spanish
-;;    Hoy
-;;    *** Noun                                                            :drill:
+;;    /Hoy/
+;;
+;;    **** Example
+;;    /Hoy es domingo/
+;;
+;;    *** Tomorrow :drill:
 ;;    :PROPERTIES:
 ;;    :DRILL_CARD_TYPE: twosided
 ;;    :END:
-;;    Translate the following word.
-;;    **** English
-;;    Yesterday
-;;    **** Spanish
-;;    Ayer
-;;    *** Noun                                                            :drill:
-;;    :PROPERTIES:
-;;    :DRILL_CARD_TYPE: twosided
-;;    :END:
-;;    Translate the following word.
+;;
 ;;    **** English
 ;;    Tomorrow
+;;
 ;;    **** Spanish
-;;    Mañana
-
+;;    /Mañana/
+;;
+;; Note that there are several things happening here:
+;;   - Each column in the table is put on its own row if it's non-empty
+;;   - Instead of using the DRILL_HEADING property as a generic heading, the first element of each row is used as the heading
+;;   - Any org-emphasis marker that may have been present on the item gets removed for the heading
+;;
+;; This is because I like to write my Spanish in italics.
+;; However, it messes up Org's display sometimes in the heading so I remove them from the headings
+;;
+;; If instead of using the words from the first column as the headings, you want to use the same string for each heading,
+;; (i.e. the old behavior) this can be done by specifying the DRILL_HEADING property
+;;
 ;; `org-drill-table-generate' checks the existing list of cards so it does not
 ;; add duplicates.
 
@@ -139,7 +149,9 @@ and the row value."
 
 (defun org-drill-table--insert-card (card)
   "Insert an OrgDrillCard CARD into the current buffer."
-  (insert (OrgDrillCard-heading card))
+  (insert (if (string= "" (OrgDrillCard-heading card))
+              (replace-regexp-in-string "^\\([/*_~+]\\)?\\(.*\\)\\1$" "\\2" (cdr (car (OrgDrillCard-subheadings card))))
+            (OrgDrillCard-heading card)))
   (org-set-tags-to ":drill:")
   (goto-char (line-end-position))
   (newline)
@@ -148,7 +160,7 @@ and the row value."
   (insert (OrgDrillCard-instructions card))
   ;; Insert subheadings. Create a subheading for the first and use the same
   ;; heading level for the rest.
-  (--each (-map-indexed 'cons (OrgDrillCard-subheadings card))
+  (--each (-map-indexed 'cons (--remove (string= "" (cdr it)) (OrgDrillCard-subheadings card)))
     (cl-destructuring-bind (idx header . value) it
       (if (zerop idx) (org-insert-subheading nil) (org-insert-heading))
       (insert header)
@@ -303,7 +315,7 @@ INSTRUCTIONS is a string describing how to use the card."
         (cl-destructuring-bind (idx . card) it
           (org-insert-subheading nil)
           (unless (zerop idx)
-            (org-promote-subtree)
+
             (org-promote-subtree))
 
           (org-drill-table--insert-card card))))
