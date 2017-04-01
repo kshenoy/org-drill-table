@@ -163,13 +163,12 @@ and the row value."
   (--each (-map-indexed 'cons (--remove (string= "" (cdr it)) (OrgDrillCard-subheadings card)))
     (cl-destructuring-bind (idx header . value) it
       (if (zerop idx) (org-insert-subheading nil) (org-insert-heading))
-      (insert header)
+      (insert (replace-regexp-in-string "^\\([/*_~+]\\)?\\(.*\\)\\1$" "\\2" header))
       (newline)
       (org-indent-line)
       (insert value)
       (org-indent-line)
-      ))
-  )
+      )))
 
 (defun org-drill-table--skip-props-and-schedule ()
   "Move past the properties and schedule of the current subtree."
@@ -249,7 +248,6 @@ Create the heading if it does not exist."
         (insert "Cards")
         (when org-drill-table-noexport-cards
           (org-set-tags-to ":noexport:"))))
-
     (goto-char (line-end-position))))
 
 (defun org-drill-table--existing-cards ()
@@ -315,7 +313,7 @@ INSTRUCTIONS is a string describing how to use the card."
         (cl-destructuring-bind (idx . card) it
           (org-insert-subheading nil)
           (unless (zerop idx)
-
+            (org-promote-subtree)
             (org-promote-subtree))
 
           (org-drill-table--insert-card card))))
@@ -324,6 +322,7 @@ INSTRUCTIONS is a string describing how to use the card."
 
       (if (zerop len)
           (message "No new cards to insert")
+        (org-set-tags t)
         (message "Inserted %s new card%s"
                  len
                  (if (= 1 len) "" "s"))))))
