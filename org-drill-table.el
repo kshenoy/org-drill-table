@@ -37,9 +37,10 @@
 
 ;;    * Vocab
 ;;    |-----------+-----------+------------------|
-;;    | English   | Spanish   | Example          |
+;;    | English   | /Spanish/ | Example          |
 ;;    |-----------+-----------+------------------|
 ;;    | Today     | /Hoy/     | /Hoy es domingo/ |
+;;    | Yesterday | Ayer      |                  |
 ;;    | Tomorrow  | /Mañana/  |                  |
 ;;    |-----------+-----------+------------------|
 
@@ -51,35 +52,39 @@
 ;;    :DRILL_INSTRUCTIONS: Translate the following word.
 ;;    :END:
 ;;    |-----------+-----------+------------------|
-;;    | English   | Spanish   | Example          |
+;;    | English   | /Spanish/ | Example          |
 ;;    |-----------+-----------+------------------|
 ;;    | Today     | /Hoy/     | /Hoy es domingo/ |
+;;    | Yesterday | Ayer      |                  |
 ;;    | Tomorrow  | /Mañana/  |                  |
 ;;    |-----------+-----------+------------------|
-;;
 ;;    ** Cards
-;;    *** Today :drill:
+;;    *** Today                                                          :drill:
 ;;    :PROPERTIES:
 ;;    :DRILL_CARD_TYPE: twosided
 ;;    :END:
-;;
 ;;    **** English
 ;;    Today
-;;
 ;;    **** Spanish
 ;;    /Hoy/
-;;
 ;;    **** Example
 ;;    /Hoy es domingo/
-;;
-;;    *** Tomorrow :drill:
+;;    *** Yesterday                                                      :drill:
 ;;    :PROPERTIES:
 ;;    :DRILL_CARD_TYPE: twosided
 ;;    :END:
-;;
+;;    Translate the following word.
+;;    **** English
+;;    Yesterday
+;;    **** Spanish
+;;    Ayer
+;;    *** Tomorrow                                                       :drill:
+;;    :PROPERTIES:
+;;    :DRILL_CARD_TYPE: twosided
+;;    :END:
+;;    Translate the following word.
 ;;    **** English
 ;;    Tomorrow
-;;
 ;;    **** Spanish
 ;;    /Mañana/
 ;;
@@ -89,7 +94,7 @@
 ;;   - Any org-emphasis marker that may have been present on the item gets removed for the heading
 ;;
 ;; This is because I like to write my Spanish in italics.
-;; However, it messes up Org's display sometimes in the heading so I remove them from the headings
+;; However, it messes up Org's heading display so I remove the emphasis from the headings
 ;;
 ;; If instead of using the words from the first column as the headings, you want to use the same string for each heading,
 ;; (i.e. the old behavior) this can be done by specifying the DRILL_HEADING property
@@ -155,7 +160,6 @@ and the row value."
   (goto-char (line-end-position))
   (newline)
   (org-set-property "DRILL_CARD_TYPE" (OrgDrillCard-type card))
-  (org-indent-line)
   (insert (OrgDrillCard-instructions card))
   ;; Insert subheadings. Create a subheading for the first and use the same
   ;; heading level for the rest.
@@ -164,10 +168,7 @@ and the row value."
       (if (zerop idx) (org-insert-subheading nil) (org-insert-heading))
       (insert header)
       (newline)
-      (org-indent-line)
-      (insert value)
-      (org-indent-line)
-      )))
+      (insert value))))
 
 (defun org-drill-table--skip-props-and-schedule ()
   "Move past the properties and schedule of the current subtree."
@@ -261,7 +262,10 @@ Return a list of OrgDrillCard."
 
 (defun org-drill-table--table->cards (heading type instructions)
   "Convert the drill-table tree at point to a list of OrgDrillCards. "
-  (--map (OrgDrillCard (if (string= "" heading) (org-drill-table--remove-org-emphasis-markers (cdr (car it))) heading) type instructions it)
+  (--map (OrgDrillCard
+           (if (string= "" heading)
+             (org-drill-table--remove-org-emphasis-markers (cdr (car it))) heading)
+           type instructions it)
          (org-drill-table--drill-table-rows)))
 
 (defun org-drill-table--get-or-read-prop (name read-fn)
