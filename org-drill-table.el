@@ -163,8 +163,8 @@ and the row value."
     (cl-destructuring-bind (idx header . value) it
       (if (zerop idx) (org-insert-subheading nil) (org-insert-heading))
       (insert header)
-      (newline)
       (org-indent-line)
+      (newline)
       (insert value)
       (org-indent-line)
       )))
@@ -209,12 +209,7 @@ and the row value."
                     (content (save-restriction
                                (org-narrow-to-subtree)
                                (org-drill-table--skip-props-and-schedule)
-                               (->> (buffer-substring-no-properties (point) (point-max))
-                                    (s-split "\n")
-                                    (mapcar 's-trim)
-                                    (s-join "\n")
-                                    s-trim
-                                    message))))
+                               (s-trim (buffer-substring-no-properties (point) (point-max))))))
                 (setq acc (cons (cons hd content) acc))))
 
             (OrgDrillCard heading type instructions (nreverse acc))))))))
@@ -266,7 +261,7 @@ Return a list of OrgDrillCard."
 
 (defun org-drill-table--table->cards (heading type instructions)
   "Convert the drill-table tree at point to a list of OrgDrillCards. "
-  (--map (OrgDrillCard (if (string= "" heading) (org-drill-table--remove-org-emphasis-markers (cdr (car it))) heading) type instructions it)
+  (--map (OrgDrillCard (if (string= "" heading) (cdr (car it)) heading) type instructions it)
          (org-drill-table--drill-table-rows)))
 
 (defun org-drill-table--get-or-read-prop (name read-fn)
@@ -280,15 +275,6 @@ If the property is not set, read from the user using READ-FN."
 (defun org-drill-table--remove-org-emphasis-markers (str)
   "Remove any org emphasis markers from str"
   (replace-regexp-in-string "^\\([/*_~+]\\)?\\(.*\\)\\1$" "\\2" str))
-
-(defun org-drill-table--remove-blank-line-after-cards-heading ()
-  "Remove any blank lines after the Cards heading"
-  (save-excursion
-    (org-drill-table--goto-or-insert-cards-heading)
-    (org-drill-table--skip-props-and-schedule)
-    (unless (org-at-heading-p)
-      (delete-region (progn (forward-line 0) (point))
-                     (progn (forward-line 1) (point))))))
 
 
 ;;;###autoload
