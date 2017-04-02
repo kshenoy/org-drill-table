@@ -139,8 +139,9 @@
   "Extract the rows from the table at point.
 Return a list of rows, where each row a cons of the column name
 and the row value."
-  (cl-destructuring-bind (header &rest body) (--remove (equal 'hline it) (org-table-to-lisp))
-    (--map (-zip-with 'cons header it) body)))
+  (cl-destructuring-bind
+      (header &rest body) (--remove (equal 'hline it) (org-table-to-lisp))
+    (--map (-zip-with 'cons (mapcar 'org-drill-table--remove-org-emphasis-markers header) it) body)))
 
 (defun org-drill-table--goto-table-in-subtree ()
   "Move to the first table in the current subtree."
@@ -149,9 +150,7 @@ and the row value."
 
 (defun org-drill-table--insert-card (card)
   "Insert an OrgDrillCard CARD into the current buffer."
-  (insert (if (string= "" (OrgDrillCard-heading card))
-              (replace-regexp-in-string "^\\([/*_~+]\\)?\\(.*\\)\\1$" "\\2" (cdr (car (OrgDrillCard-subheadings card))))
-            (OrgDrillCard-heading card)))
+  (insert (OrgDrillCard-heading card))
   (org-set-tags-to ":drill:")
   (goto-char (line-end-position))
   (newline)
@@ -163,7 +162,7 @@ and the row value."
   (--each (-map-indexed 'cons (--remove (string= "" (cdr it)) (OrgDrillCard-subheadings card)))
     (cl-destructuring-bind (idx header . value) it
       (if (zerop idx) (org-insert-subheading nil) (org-insert-heading))
-      (insert (replace-regexp-in-string "^\\([/*_~+]\\)?\\(.*\\)\\1$" "\\2" header))
+      (insert header)
       (newline)
       (org-indent-line)
       (insert value)
@@ -179,6 +178,10 @@ and the row value."
   ;; Schedule.
   (when (s-matches? "SCHEDULED" (buffer-substring (line-beginning-position)
                                                   (line-end-position)))
+    (forward-line))
+  ;; Advance point if we're still on an org-heading. This is required because
+  ;; if the sub-heading has no properties or scheduled, then point won't move
+  (when (org-at-heading-p)
     (forward-line)))
 
 (defun org-drill-table--subtree->card ()
@@ -206,13 +209,12 @@ and the row value."
                     (content (save-restriction
                                (org-narrow-to-subtree)
                                (org-drill-table--skip-props-and-schedule)
-                               (->> (buffer-substring (point) (point-max))
-                                 (s-split "\n")
-                                 (-drop 1)
-                                 (mapcar 's-trim)
-                                 (s-join "\n")
-                                 s-trim
-                                 message))))
+                               (->> (buffer-substring-no-properties (point) (point-max))
+                                    (s-split "\n")
+                                    (mapcar 's-trim)
+                                    (s-join "\n")
+                                    s-trim
+                                    message))))
                 (setq acc (cons (cons hd content) acc))))
 
             (OrgDrillCard heading type instructions (nreverse acc))))))))
@@ -264,7 +266,7 @@ Return a list of OrgDrillCard."
 
 (defun org-drill-table--table->cards (heading type instructions)
   "Convert the drill-table tree at point to a list of OrgDrillCards. "
-  (--map (OrgDrillCard heading type instructions it)
+  (--map (OrgDrillCard (if (string= "" heading) (org-drill-table--remove-org-emphasis-markers (cdr (car it))) heading) type instructions it)
          (org-drill-table--drill-table-rows)))
 
 (defun org-drill-table--get-or-read-prop (name read-fn)
@@ -274,6 +276,20 @@ If the property is not set, read from the user using READ-FN."
       (let ((val (funcall read-fn)))
         (org-entry-put (point) name val)
         val)))
+
+(defun org-drill-table--remove-org-emphasis-markers (str)
+  "Remove any org emphasis markers from str"
+  (replace-regexp-in-string "^\\([/*_~+]\\)?\\(.*\\)\\1$" "\\2" str))
+
+(defun org-drill-table--remove-blank-line-after-cards-heading ()
+  "Remove any blank lines after the Cards heading"
+  (save-excursion
+    (org-drill-table--goto-or-insert-cards-heading)
+    (org-drill-table--skip-props-and-schedule)
+    (unless (org-at-heading-p)
+      (delete-region (progn (forward-line 0) (point))
+                     (progn (forward-line 1) (point))))))
+
 
 ;;;###autoload
 (defun org-drill-table-generate (heading type instructions)
@@ -317,6 +333,7 @@ INSTRUCTIONS is a string describing how to use the card."
             (org-promote-subtree))
 
           (org-drill-table--insert-card card))))
+    (org-drill-table--remove-blank-line-after-cards-heading)
 
     (let ((len (length new-cards)))
 
