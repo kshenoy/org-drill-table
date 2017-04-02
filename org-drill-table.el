@@ -163,8 +163,8 @@ and the row value."
     (cl-destructuring-bind (idx header . value) it
       (if (zerop idx) (org-insert-subheading nil) (org-insert-heading))
       (insert header)
-      (org-indent-line)
       (newline)
+      (org-indent-line)
       (insert value)
       (org-indent-line)
       )))
@@ -261,7 +261,7 @@ Return a list of OrgDrillCard."
 
 (defun org-drill-table--table->cards (heading type instructions)
   "Convert the drill-table tree at point to a list of OrgDrillCards. "
-  (--map (OrgDrillCard (if (string= "" heading) (cdr (car it)) heading) type instructions it)
+  (--map (OrgDrillCard (if (string= "" heading) (org-drill-table--remove-org-emphasis-markers (cdr (car it))) heading) type instructions it)
          (org-drill-table--drill-table-rows)))
 
 (defun org-drill-table--get-or-read-prop (name read-fn)
@@ -319,13 +319,12 @@ INSTRUCTIONS is a string describing how to use the card."
             (org-promote-subtree))
 
           (org-drill-table--insert-card card))))
-    (org-drill-table--remove-blank-line-after-cards-heading)
 
     (let ((len (length new-cards)))
 
       (if (zerop len)
           (message "No new cards to insert")
-        (org-set-tags t)
+        (org-align-all-tags)
         (message "Inserted %s new card%s"
                  len
                  (if (= 1 len) "" "s"))))))
