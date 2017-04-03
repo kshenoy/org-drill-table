@@ -48,6 +48,7 @@
 
 ;;    * Vocab
 ;;    :PROPERTIES:
+;;    :DRILL_HEADING:
 ;;    :DRILL_CARD_TYPE: twosided
 ;;    :DRILL_INSTRUCTIONS: Translate the following word.
 ;;    :END:
